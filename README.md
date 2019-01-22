@@ -1,6 +1,6 @@
-# Gobierto ETL for Reus
+# Gobierto ETL for Diputacion Huelva
 
-ETL scripts for Gobierto Reus site
+ETL scripts for Gobierto Diputacion Huelva site
 
 ## Setup
 
@@ -10,9 +10,6 @@ This repository relies heavily in [gobierto_data](https://github.com/PopulateToo
 
 ## Available operations
 
-- check-json-columns
 - transform-planned
-- transform-executed
 - import-planned-budgets
-- import-executed-budgets
 
