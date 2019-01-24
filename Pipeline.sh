@@ -5,7 +5,6 @@ source .env
 
 GOBIERTO_ETL_UTILS=$BASE_DIR/gobierto-etl-utils
 DIPHU_ETL=$BASE_DIR/gobierto-etl-diphu
-GOBIERTO=$BASE_DIR/gobierto
 WORKING_DIR=/tmp/diphu
 DIPHU_INE_CODE=21000DD000
 YEARS="2019 2018 2017 2016 2015"
@@ -17,8 +16,13 @@ mkdir $WORKING_DIR
 # Extract > Download data sources
 cd $GOBIERTO_ETL_UTILS; ruby operations/download-s3/run.rb "diphuelva/budgets" $WORKING_DIR
 
-# Extract > Check valid CSV
+# Extract > Convert to UTF-8
 for file in $WORKING_DIR/*.csv; do
+  cd $GOBIERTO_ETL_UTILS; ruby operations/convert-to-utf8/run.rb $file $file"_utf8.csv"
+done
+
+# Extract > Check valid CSV
+for file in $WORKING_DIR/*_utf8.csv; do
   cd $GOBIERTO_ETL_UTILS; ruby operations/check-csv/run.rb $file
 done
 
@@ -39,10 +43,10 @@ cd $GOBIERTO_ETL_UTILS; ruby operations/gobierto_budgets/update_total_budget/run
 cd $GOBIERTO_ETL_UTILS; ruby operations/gobierto_budgets/bubbles/run.rb $WORKING_DIR/organization.id.txt
 
 # Load > Calculate annual data
-cd $GOBIERTO; bin/rails runner $GOBIERTO_ETL_UTILS/operations/gobierto_budgets/annual_data/run.rb  $YEARS $WORKING_DIR/organization.id.txt
+cd $GOBIERTO_DIR; bin/rails runner $GOBIERTO_ETL_UTILS/operations/gobierto_budgets/annual_data/run.rb  $YEARS $WORKING_DIR/organization.id.txt
 
 # Load > Publish activity
-cd $GOBIERTO; bin/rails runner $GOBIERTO_ETL_UTILS/operations/gobierto/publish-activity/run.rb budgets_updated $WORKING_DIR/organization.id.txt
+cd $GOBIERTO_DIR; bin/rails runner $GOBIERTO_ETL_UTILS/operations/gobierto/publish-activity/run.rb budgets_updated $WORKING_DIR/organization.id.txt
 
 # Clear cache
-cd $GOBIERTO; bin/rails runner $GOBIERTO_ETL_UTILS/operations/gobierto/clear-cache/run.rb
+cd $GOBIERTO_DIR; bin/rails runner $GOBIERTO_ETL_UTILS/operations/gobierto/clear-cache/run.rb
