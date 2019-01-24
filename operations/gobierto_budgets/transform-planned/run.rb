@@ -57,7 +57,7 @@ def process_row(row, functional_data, economic_data, kind)
   income = kind == GobiertoData::GobiertoBudgets::INCOME
   amount = income ? row[3].to_f : row[4].to_f
   amount = amount.round(2)
-  functional_code = income ? nil : row[0]
+  functional_code = income ? nil : row[1]
   economic_code   = income ? row[1] : row[2]
 
   # Level 3
