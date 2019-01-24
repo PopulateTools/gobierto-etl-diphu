@@ -31,7 +31,7 @@ year = ARGV[0].match(/\d+/)[0].to_i
 
 puts "[START] transform-planned/run.rb with file=#{input_file} output=#{output_file} year=#{year}"
 
-csv_data = CSV.read(input_file, headers: true)
+csv_data = CSV.read(input_file, headers: true, encoding: 'utf-8')
 
 base_data = {
   organization_id: '21000DD000',
