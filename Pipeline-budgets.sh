@@ -21,13 +21,13 @@ for file in $WORKING_DIR/*.csv; do
   cd $GOBIERTO_ETL_UTILS; ruby operations/check-csv/run.rb $file
 done
 
-# Transform > Transform planned budgets data files
+# Transform > Transform budgets data files
 for file in $WORKING_DIR/*.csv; do
-  cd $DIPHU_ETL; ruby operations/gobierto_budgets/transform-planned/run.rb $file $file"_transformed.json"
+  cd $DIPHU_ETL; ruby operations/gobierto_budgets/transform-budgets/run.rb $file $file"_transformed.json"
 done
 
 for file in $WORKING_DIR/*_transformed.json; do
-  cd $DIPHU_ETL; ruby operations/gobierto_budgets/import-planned-budgets/run.rb $file
+  cd $DIPHU_ETL; ruby operations/gobierto_budgets/import-budgets/run.rb $file
 done
 
 # Load > Calculate totals

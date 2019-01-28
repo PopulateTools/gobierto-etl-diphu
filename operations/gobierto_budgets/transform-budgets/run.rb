@@ -17,7 +17,7 @@ require "csv"
 #
 # Samples:
 #
-#   /path/to/project/operations/gobierto_budgets/transform-planned/run.rb input.csv output.json
+#   /path/to/project/operations/gobierto_budgets/transform-budgets/run.rb input.csv output.json
 #
 
 if ARGV.length != 2
@@ -28,8 +28,9 @@ input_file = ARGV[0]
 output_file = ARGV[1]
 kind = ARGV[0].include?("income") ? GobiertoData::GobiertoBudgets::INCOME : GobiertoData::GobiertoBudgets::EXPENSE
 year = ARGV[0].match(/\d+/)[0].to_i
+execution = input_file.include?("execution")
 
-puts "[START] transform-planned/run.rb with file=#{input_file} output=#{output_file} year=#{year}"
+puts "[START] transform-budgets/run.rb with file=#{input_file} output=#{output_file} year=#{year}"
 
 csv_data = CSV.read(input_file, headers: true, encoding: 'utf-8')
 
@@ -42,20 +43,24 @@ base_data = {
   population: nil
 }
 
-def normalize_data(data, kind)
+def normalize_data(data, kind, execution)
   functional_data = {}
   economic_data = {}
 
   data.each do |row|
-    functional_data, economic_data = process_row(row, functional_data, economic_data, kind)
+    functional_data, economic_data = process_row(row, functional_data, economic_data, kind, execution)
   end
 
   return functional_data, economic_data
 end
 
-def process_row(row, functional_data, economic_data, kind)
+def process_row(row, functional_data, economic_data, kind, execution)
   income = kind == GobiertoData::GobiertoBudgets::INCOME
-  amount = income ? row[3].to_f : row[4].to_f
+  amount = if execution
+             income ? row[5].to_f : row[7].to_f
+           else
+             income ? row[3].to_f : row[4].to_f
+           end
   amount = amount.round(2)
   functional_code = income ? nil : row[1]
   economic_code   = income ? row[1] : row[2]
@@ -112,11 +117,11 @@ def hydratate(options)
 end
 
 
-functional_data, economic_data = normalize_data(csv_data, kind)
+functional_data, economic_data = normalize_data(csv_data, kind, execution)
 
 output_data = hydratate(data: functional_data, area_name: GobiertoData::GobiertoBudgets::FUNCTIONAL_AREA_NAME, base_data: base_data, kind: kind) +
   hydratate(data: economic_data, area_name: GobiertoData::GobiertoBudgets::ECONOMIC_AREA_NAME, base_data: base_data, kind: kind)
 
 File.write(output_file, output_data.to_json)
 
-puts "[END] transform-planned/run.rb output=#{output_file}"
+puts "[END] transform-budgets/run.rb output=#{output_file}"
