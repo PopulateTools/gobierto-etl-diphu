@@ -57,7 +57,7 @@ end
 def process_row(row, functional_data, economic_data, kind, execution)
   income = kind == GobiertoData::GobiertoBudgets::INCOME
   amount = if execution
-             income ? row[5].to_f : row[7].to_f
+             income ? row[6].to_f : row[7].to_f
            else
              income ? row[3].to_f : row[4].to_f
            end
