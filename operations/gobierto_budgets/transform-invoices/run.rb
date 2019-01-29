@@ -51,6 +51,8 @@ CSV.read(input_file, headers: true, encoding: 'utf-8', header_converters: lambda
     puts row
     exit
   end
+  # Ignore invoices older than 2017
+  next if date.year < 2017
 
   attributes = {
     value: row['importe'].to_f,
