@@ -57,7 +57,7 @@ CSV.read(input_file, headers: true, encoding: 'utf-8', header_converters: lambda
   attributes = {
     value: row['importe'].to_f,
     date: date.strftime("%Y-%m-%d"),
-    invoice_id: row['factura'],
+    invoice_id: [row['factura'], row['tercero'], row['fecha_fac']].join('/'),
     provider_id: row['tercero'],
     provider_name: row['nombre_ter.'],
     paid: true,
