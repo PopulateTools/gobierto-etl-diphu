@@ -5,8 +5,6 @@ set -e
 # Some variables already defined in .env
 source .env
 
-GOBIERTO_ETL_UTILS=$BASE_DIR/gobierto-etl-utils
-DIPHU_ETL=$BASE_DIR/gobierto-etl-diphu
 WORKING_DIR=/tmp/diphu
 DIPHU_INE_CODE=21000
 YEARS="2019 2018 2017 2016 2015"

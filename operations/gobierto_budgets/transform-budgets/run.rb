@@ -57,11 +57,6 @@ def process_row(row, functional_data, economic_data, custom_data, kind, executio
   custom_code     = income ? [row[1], row[2]].join("-") : [row[1], row[2], row[3]].join("-")
 
   unless economic_code.nil?
-
-    raise "Blank amount" if amount.blank?
-    raise "Blank functional code" if functional_code.blank?
-    raise "Blank custom code" if custom_code.blank?
-
     # Level 3
     economic_code_l3 = economic_code[0..2]
     if kind == GobiertoData::GobiertoBudgets::EXPENSE
