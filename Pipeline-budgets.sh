@@ -14,10 +14,6 @@ YEARS="2019 2018 2017 2016 2015"
 rm -rf $WORKING_DIR
 mkdir $WORKING_DIR
 
-#TODO Remove
-echo $DIPHU_INE_CODE > $WORKING_DIR/organization.id.txt
-cd $GOBIERTO_ETL_UTILS; ruby operations/gobierto_budgets/clear-budgets/run.rb $WORKING_DIR/organization.id.txt
-
 # Copy data to WORKING_DIR
 cp -R $DATA_DIR $WORKING_DIR
 

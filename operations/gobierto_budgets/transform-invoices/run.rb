@@ -40,8 +40,23 @@ base_attributes = {
 
 output_data = []
 CSV::Converters[:strip] = lambda { |s| s.try(:strip) }
-CSV.read(input_file, headers: true, encoding: 'utf-8', header_converters: lambda { |h| h.downcase.gsub(' ', '_') }, converters: [:strip]).each do |row|
 
+data = if input_file.include?(".csv")
+  CSV.read(input_file, headers: true, encoding: 'utf-8', header_converters: lambda { |h| h.downcase.gsub(' ', '_') }, converters: [:strip])
+else
+  xls = Roo::Spreadsheet.open(input_file, extension: :xls)
+  sheet = xls.sheet(0)
+
+  rows = []
+  sheet.each_with_index do |row, idx|
+    next if idx == 0
+    rows.push(row.map{ |i| i.is_a?(String) ? i.encode('UTF-8').force_encoding('UTF-8') : i })
+  end
+
+  rows
+end
+
+data.each do |row|
   next if row["fecha_fac"].blank?
 
   begin
