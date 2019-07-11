@@ -6,7 +6,7 @@ source .env
 GOBIERTO_ETL_UTILS=$BASE_DIR/gobierto-etl-utils
 DIPHU_ETL=$BASE_DIR/gobierto-etl-diphu
 WORKING_DIR=/tmp/diphu
-DIPHU_INE_CODE=21000DD000
+DIPHU_INE_CODE=21000
 URL=http://gobierto-data.s3.amazonaws.com/diphuelva/
 
 rm -rf $WORKING_DIR

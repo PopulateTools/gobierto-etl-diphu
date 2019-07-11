@@ -30,7 +30,7 @@ output_file = ARGV[1]
 puts "[START] transform-invoices/run.rb with file=#{input_file} output=#{output_file}"
 
 base_attributes = {
-  location_id: '21000DD000',
+  location_id: '21000',
   province_id: nil,
   autonomous_region_id: nil,
   payment_date: nil,

@@ -12,7 +12,7 @@ require "csv"
 #
 # Arguments:
 #
-#  - 0: Absolute path to a file containing a CSV downloaded from Sant Feliu data source
+#  - 0: Absolute path to a file containing a CSV or a Excel file
 #  - 1: Absolute path of the output file
 #
 # Samples:
@@ -26,70 +26,70 @@ end
 
 input_file = ARGV[0]
 output_file = ARGV[1]
-kind = ARGV[0].include?("income") ? GobiertoData::GobiertoBudgets::INCOME : GobiertoData::GobiertoBudgets::EXPENSE
-year = ARGV[0].match(/\d+/)[0].to_i
-execution = input_file.include?("execution")
+kind = ARGV[0].include?("ingresos") ? GobiertoData::GobiertoBudgets::INCOME : GobiertoData::GobiertoBudgets::EXPENSE
+year = ARGV[0].match(/(\d{4})-\d+-\d+/)[0].to_i
+execution = input_file.include?("ejecucion")
 
 puts "[START] transform-budgets/run.rb with file=#{input_file} output=#{output_file} year=#{year}"
-
-csv_data = CSV.read(input_file, headers: true, encoding: 'utf-8')
-
-base_data = {
-  organization_id: '21000DD000',
-  ine_code: nil,
-  province_id: nil,
-  autonomy_id: nil,
-  year: year,
-  population: nil
-}
 
 def normalize_data(data, kind, execution)
   functional_data = {}
   economic_data = {}
+  custom_data = {}
 
   data.each do |row|
-    functional_data, economic_data = process_row(row, functional_data, economic_data, kind, execution)
+    functional_data, economic_data, custom_data = process_row(row, functional_data, economic_data, custom_data, kind, execution)
   end
 
-  return functional_data, economic_data
+  return functional_data, economic_data, custom_data
 end
 
-def process_row(row, functional_data, economic_data, kind, execution)
+def process_row(row, functional_data, economic_data, custom_data, kind, execution)
   income = kind == GobiertoData::GobiertoBudgets::INCOME
   amount = if execution
-             income ? row[6].to_f : row[7].to_f
+             income ? row[7].to_f : row[9].to_f
            else
-             income ? row[3].to_f : row[4].to_f
+             income ? row[4].to_f : row[5].to_f
            end
   amount = amount.round(2)
-  functional_code = income ? nil : row[1]
-  economic_code   = income ? row[1] : row[2]
+  functional_code = income ? nil : row[2]
+  economic_code   = income ? row[2] : row[3]
+  custom_code     = income ? [row[1], row[2]].join("-") : [row[1], row[2], row[3]].join("-")
 
-  # Level 3
-  economic_code_l3 = economic_code[0..2]
-  if kind == GobiertoData::GobiertoBudgets::EXPENSE
-    functional_code_l3 = functional_code[0..2]
-    functional_data[functional_code_l3] ? functional_data[functional_code_l3] += amount : functional_data[functional_code_l3] = amount
+  unless economic_code.nil?
+
+    raise "Blank amount" if amount.blank?
+    raise "Blank functional code" if functional_code.blank?
+    raise "Blank custom code" if custom_code.blank?
+
+    # Level 3
+    economic_code_l3 = economic_code[0..2]
+    if kind == GobiertoData::GobiertoBudgets::EXPENSE
+      functional_code_l3 = functional_code[0..2]
+      functional_data[functional_code_l3] ? functional_data[functional_code_l3] += amount : functional_data[functional_code_l3] = amount
+    end
+    economic_data[economic_code_l3] ? economic_data[economic_code_l3] += amount : economic_data[economic_code_l3] = amount
+
+    custom_data[custom_code] = amount
+
+    # Level 2
+    economic_code_l2 = economic_code[0..1]
+    if kind == GobiertoData::GobiertoBudgets::EXPENSE
+      functional_code_l2 = functional_code[0..1]
+      functional_data[functional_code_l2] ? functional_data[functional_code_l2] += amount : functional_data[functional_code_l2] = amount
+    end
+    economic_data[economic_code_l2] ? economic_data[economic_code_l2] += amount : economic_data[economic_code_l2] = amount
+
+    # Level 1
+    economic_code_l1 = economic_code[0]
+    if kind == GobiertoData::GobiertoBudgets::EXPENSE
+      functional_code_l1 = functional_code[0]
+      functional_data[functional_code_l1] ? functional_data[functional_code_l1] += amount : functional_data[functional_code_l1] = amount
+    end
+    economic_data[economic_code_l1] ? economic_data[economic_code_l1] += amount : economic_data[economic_code_l1] = amount
   end
-  economic_data[economic_code_l3] ? economic_data[economic_code_l3] += amount : economic_data[economic_code_l3] = amount
 
-  # Level 2
-  economic_code_l2 = economic_code[0..1]
-  if kind == GobiertoData::GobiertoBudgets::EXPENSE
-    functional_code_l2 = functional_code[0..1]
-    functional_data[functional_code_l2] ? functional_data[functional_code_l2] += amount : functional_data[functional_code_l2] = amount
-  end
-  economic_data[economic_code_l2] ? economic_data[economic_code_l2] += amount : economic_data[economic_code_l2] = amount
-
-  # Level 1
-  economic_code_l1 = economic_code[0]
-  if kind == GobiertoData::GobiertoBudgets::EXPENSE
-    functional_code_l1 = functional_code[0]
-    functional_data[functional_code_l1] ? functional_data[functional_code_l1] += amount : functional_data[functional_code_l1] = amount
-  end
-  economic_data[economic_code_l1] ? economic_data[economic_code_l1] += amount : economic_data[economic_code_l1] = amount
-
-  return functional_data, economic_data
+  return functional_data, economic_data, custom_data
 end
 
 def hydratate(options)
@@ -98,9 +98,12 @@ def hydratate(options)
   base_data = options.fetch(:base_data)
   kind      = options.fetch(:kind)
 
-  data.map do |code, amount|
+  data.compact.map do |code, amount|
     code = code.to_s
     level = code.length == 6 ? 4 : code.length
+    if area_name == GobiertoData::GobiertoBudgets::CUSTOM_AREA_NAME
+      level = 1
+    end
     parent_code = case level
                     when 1
                       nil
@@ -116,11 +119,35 @@ def hydratate(options)
   end
 end
 
+base_data = {
+  organization_id: '21000',
+  ine_code: nil,
+  province_id: nil,
+  autonomy_id: nil,
+  year: year,
+  population: nil
+}
 
-functional_data, economic_data = normalize_data(csv_data, kind, execution)
+data = if input_file.include?(".csv")
+  CSV.read(input_file, headers: true, encoding: 'utf-8')
+else
+  xls = Roo::Spreadsheet.open(input_file, extension: :xls)
+  sheet = xls.sheet(0)
+
+  rows = []
+  sheet.each_with_index do |row, idx|
+    next if idx == 0
+    rows.push(row.map{ |i| i.is_a?(String) ? i.encode('UTF-8').force_encoding('UTF-8') : i })
+  end
+
+  rows
+end
+
+functional_data, economic_data, custom_data = normalize_data(data, kind, execution)
 
 output_data = hydratate(data: functional_data, area_name: GobiertoData::GobiertoBudgets::FUNCTIONAL_AREA_NAME, base_data: base_data, kind: kind) +
-  hydratate(data: economic_data, area_name: GobiertoData::GobiertoBudgets::ECONOMIC_AREA_NAME, base_data: base_data, kind: kind)
+  hydratate(data: economic_data, area_name: GobiertoData::GobiertoBudgets::ECONOMIC_AREA_NAME, base_data: base_data, kind: kind) +
+  hydratate(data: custom_data, area_name: GobiertoData::GobiertoBudgets::CUSTOM_AREA_NAME, base_data: base_data, kind: kind)
 
 File.write(output_file, output_data.to_json)
 
