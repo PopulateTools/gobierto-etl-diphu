@@ -4,7 +4,7 @@ require "bundler/setup"
 Bundler.require
 
 data_file = ARGV[0]
-year = ARGV[0].match(/\d+/)[0].to_i
+year = ARGV[0].match(/\/(\d{4})/)[1].to_i
 index = if data_file.include?("ejecucion")
           GobiertoData::GobiertoBudgets::ES_INDEX_EXECUTED
         else
