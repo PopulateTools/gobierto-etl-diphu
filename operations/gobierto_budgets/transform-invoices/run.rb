@@ -46,11 +46,13 @@ data = if input_file.include?(".csv")
 else
   xls = Roo::Spreadsheet.open(input_file, extension: :xls)
   sheet = xls.sheet(0)
+  headers = %w(codigoine fecha_fac importe tercero nombre_ter.)
 
   rows = []
   sheet.each_with_index do |row, idx|
     next if idx == 0
-    rows.push(row.map{ |i| i.is_a?(String) ? i.encode('UTF-8').force_encoding('UTF-8') : i })
+
+    rows.push(headers.zip(row.map{ |i| i.is_a?(String) ? i.encode('UTF-8').force_encoding('UTF-8') : i }).to_h)
   end
 
   rows
@@ -59,12 +61,16 @@ end
 data.each do |row|
   next if row["fecha_fac"].blank?
 
-  begin
-    m,d,y = row["fecha_fac"].split('/').map(&:to_i)
-    date = Date.new(y,m,d)
-  rescue
-    puts row
-    exit
+  if row["fecha_fac"].is_a?(Date)
+    date = row["fecha_fac"]
+  else
+    begin
+      m,d,y = row["fecha_fac"].split('/').map(&:to_i)
+      date = Date.new(y,m,d)
+    rescue
+      puts row
+      exit
+    end
   end
   # Ignore invoices older than 2017
   next if date.year < 2017

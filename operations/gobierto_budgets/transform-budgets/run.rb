@@ -27,7 +27,7 @@ end
 input_file = ARGV[0]
 output_file = ARGV[1]
 kind = ARGV[0].include?("ingresos") ? GobiertoData::GobiertoBudgets::INCOME : GobiertoData::GobiertoBudgets::EXPENSE
-year = ARGV[0].match(/(\d{4})-\d+-\d+/)[0].to_i
+year = ARGV[0].match(/(\d{4})\d+/)[1].to_i
 execution = input_file.include?("ejecucion")
 
 puts "[START] transform-budgets/run.rb with file=#{input_file} output=#{output_file} year=#{year}"

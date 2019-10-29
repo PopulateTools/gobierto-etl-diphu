@@ -1,20 +1,25 @@
 #!/bin/bash
 
+source "/Users/edu/.rvm/scripts/rvm"
+
 set -e
 
 # Some variables already defined in .env
 source .env
 
+BASE_DIR=/Users/edu/proyectos/populate/gobierto_etl
 GOBIERTO_ETL_UTILS=$BASE_DIR/gobierto-etl-utils
 DIPHU_ETL=$BASE_DIR/gobierto-etl-diphu
 WORKING_DIR=/tmp/diphu
 DIPHU_INE_CODE=21000
+DATA_DIR=/Users/edu/etl_dumps/diphu_staging/diphu/20191029_last/diphu-data
+GOBIERTO_DIR=/Users/edu/gobierto
 
 rm -rf $WORKING_DIR
 mkdir $WORKING_DIR
 
 # Copy data to WORKING_DIR
-cp -R $DATA_DIR $WORKING_DIR
+cp -R $DATA_DIR/* $WORKING_DIR
 
 # Transform > Transform planned budgets data files
 for file in $WORKING_DIR/facturas/*; do
