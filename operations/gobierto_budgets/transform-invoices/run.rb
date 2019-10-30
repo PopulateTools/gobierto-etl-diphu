@@ -46,7 +46,7 @@ data = if input_file.include?(".csv")
 else
   xls = Roo::Spreadsheet.open(input_file, extension: :xls)
   sheet = xls.sheet(0)
-  headers = %w(codigoine fecha_fac importe tercero nombre_ter.)
+  headers = %w(codigoine factura fecha_fac importe tercero nombre_ter.)
 
   rows = []
   sheet.each_with_index do |row, idx|
