@@ -26,65 +26,81 @@ end
 
 input_file = ARGV[0]
 output_file = ARGV[1]
-kind = ARGV[0].include?("ingresos") ? GobiertoData::GobiertoBudgets::INCOME : GobiertoData::GobiertoBudgets::EXPENSE
+@kind = ARGV[0].include?("ingresos") ? GobiertoData::GobiertoBudgets::INCOME : GobiertoData::GobiertoBudgets::EXPENSE
 year = ARGV[0].match(/(\d{4})\d+/)[1].to_i
 execution = input_file.include?("ejecucion")
 
 puts "[START] transform-budgets/run.rb with file=#{input_file} output=#{output_file} year=#{year}"
 
-def normalize_data(data, kind, execution)
-  functional_data = {}
-  economic_data = {}
-  custom_data = {}
-
-  data.each do |row|
-    functional_data, economic_data, custom_data = process_row(row, functional_data, economic_data, custom_data, kind, execution)
+def transformed_data
+  @transformed_data ||= indexes.inject({}) do |indexes_result, index|
+    indexes_result.update(
+      index => areas.inject({}) do |areas_result, area|
+        areas_result.update(
+          area => {}
+        )
+      end
+    )
   end
-
-  return functional_data, economic_data, custom_data
 end
 
-def process_row(row, functional_data, economic_data, custom_data, kind, execution)
-  income = kind == GobiertoData::GobiertoBudgets::INCOME
-  amount = if execution
-             income ? row[7].to_f : row[9].to_f
-           else
-             income ? row[4].to_f : row[5].to_f
-           end
-  amount = amount.round(2)
-  functional_code = income ? nil : row[2]
-  economic_code   = income ? row[2] : row[3]
-  custom_code     = income ? [row[1], row[2]].join("-") : [row[1], row[2], row[3]].join("-")
+def kind
+  @kind
+end
 
-  unless economic_code.nil?
-    # Level 3
-    economic_code_l3 = economic_code[0..2]
-    if kind == GobiertoData::GobiertoBudgets::EXPENSE
-      functional_code_l3 = functional_code[0..2]
-      functional_data[functional_code_l3] ? functional_data[functional_code_l3] += amount : functional_data[functional_code_l3] = amount
-    end
-    economic_data[economic_code_l3] ? economic_data[economic_code_l3] += amount : economic_data[economic_code_l3] = amount
+def indexes
+  @indexes ||= [
+    GobiertoData::GobiertoBudgets::ES_INDEX_EXECUTED,
+    GobiertoData::GobiertoBudgets::ES_INDEX_FORECAST
+  ]
+end
 
-    custom_data[custom_code] = amount
+def areas
+  @areas ||= [
+    GobiertoData::GobiertoBudgets::ECONOMIC_AREA_NAME,
+    GobiertoData::GobiertoBudgets::FUNCTIONAL_AREA_NAME,
+    GobiertoData::GobiertoBudgets::CUSTOM_AREA_NAME
+  ]
+end
 
-    # Level 2
-    economic_code_l2 = economic_code[0..1]
-    if kind == GobiertoData::GobiertoBudgets::EXPENSE
-      functional_code_l2 = functional_code[0..1]
-      functional_data[functional_code_l2] ? functional_data[functional_code_l2] += amount : functional_data[functional_code_l2] = amount
-    end
-    economic_data[economic_code_l2] ? economic_data[economic_code_l2] += amount : economic_data[economic_code_l2] = amount
+def areas_with_levels
+  @areas_with_levels ||= areas - [GobiertoData::GobiertoBudgets::CUSTOM_AREA_NAME]
+end
 
-    # Level 1
-    economic_code_l1 = economic_code[0]
-    if kind == GobiertoData::GobiertoBudgets::EXPENSE
-      functional_code_l1 = functional_code[0]
-      functional_data[functional_code_l1] ? functional_data[functional_code_l1] += amount : functional_data[functional_code_l1] = amount
-    end
-    economic_data[economic_code_l1] ? economic_data[economic_code_l1] += amount : economic_data[economic_code_l1] = amount
+def normalize_data(data)
+  data.each do |row|
+    process_row(row)
   end
+end
 
-  return functional_data, economic_data, custom_data
+def process_row(row)
+  income = kind == GobiertoData::GobiertoBudgets::INCOME
+  amounts = {
+    GobiertoData::GobiertoBudgets::ES_INDEX_EXECUTED => (income ? row[7].to_f : row[9].to_f).round(2),
+    GobiertoData::GobiertoBudgets::ES_INDEX_FORECAST => (income ? row[5].to_f : row[5].to_f + row[6].to_f).round(2)
+  }
+  codes = {
+    GobiertoData::GobiertoBudgets::ECONOMIC_AREA_NAME => income ? row[2] : row[3],
+    GobiertoData::GobiertoBudgets::FUNCTIONAL_AREA_NAME => income ? nil : row[2],
+    GobiertoData::GobiertoBudgets::CUSTOM_AREA_NAME => income ? [row[1], row[2]].join("-") : [row[1], row[2], row[3]].join("-")
+  }
+
+  return if codes[GobiertoData::GobiertoBudgets::ECONOMIC_AREA_NAME].nil?
+
+  indexes.each do |index|
+    areas.each do |area|
+      next if (code = codes[area]).nil?
+
+      if areas_with_levels.include?(area)
+        code_levels = [code[0..2], code[0..1], code[0]]
+        code_levels.each do |code_level|
+          transformed_data[index][area][code_level] = transformed_data[index][area].fetch(code_level, 0) + amounts[index]
+        end
+      else
+        transformed_data[index][area][code] = amounts[index]
+      end
+    end
+  end
 end
 
 def hydratate(options)
@@ -138,12 +154,21 @@ else
   rows
 end
 
-functional_data, economic_data, custom_data = normalize_data(data, kind, execution)
+normalize_data(data)
 
-output_data = hydratate(data: functional_data, area_name: GobiertoData::GobiertoBudgets::FUNCTIONAL_AREA_NAME, base_data: base_data, kind: kind) +
-  hydratate(data: economic_data, area_name: GobiertoData::GobiertoBudgets::ECONOMIC_AREA_NAME, base_data: base_data, kind: kind) +
-  hydratate(data: custom_data, area_name: GobiertoData::GobiertoBudgets::CUSTOM_AREA_NAME, base_data: base_data, kind: kind)
+output_files = {
+  GobiertoData::GobiertoBudgets::ES_INDEX_EXECUTED => output_file.gsub(/_transformed\.json\z/, "_ejecucion_transformed.json"),
+  GobiertoData::GobiertoBudgets::ES_INDEX_FORECAST => output_file
+}
 
-File.write(output_file, output_data.to_json)
+output_files.each do |index, file_name|
+  output_data = areas.inject([]) do |aggregated_data, area|
+    aggregated_data + hydratate(data: transformed_data[index][area],
+                                area_name: area,
+                                base_data: base_data,
+                                kind: kind)
+  end
+  File.write(file_name, output_data.to_json)
+end
 
 puts "[END] transform-budgets/run.rb output=#{output_file}"
