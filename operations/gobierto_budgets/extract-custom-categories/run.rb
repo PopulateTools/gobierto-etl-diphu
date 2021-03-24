@@ -33,8 +33,8 @@ puts "[START] extract-custom-categories/run.rb with file=#{input_file}"
 
 def process_row(row, kind, execution, output)
   income = kind == GobiertoData::GobiertoBudgets::INCOME
-  name = income ? row[3] : row[4]
-  custom_code = income ? [row[1], row[2]].join("-") : [row[1], row[2], row[3]].join("-")
+  name = income ? row[2] : row[3]
+  custom_code = income ? [row[0], row[1]].join("-") : [row[0], row[1], row[2]].join("-")
 
   output.push({name: name, code: custom_code, kind: kind})
   output

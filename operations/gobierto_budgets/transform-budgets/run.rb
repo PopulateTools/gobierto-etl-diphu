@@ -27,7 +27,7 @@ end
 input_file = ARGV[0]
 output_file = ARGV[1]
 @kind = ARGV[0].include?("ingresos") ? GobiertoData::GobiertoBudgets::INCOME : GobiertoData::GobiertoBudgets::EXPENSE
-year = ARGV[0].match(/(\d{4})\d+/)[1].to_i
+year = ARGV[0].match(/(\d{4})/)[1].to_i
 execution = input_file.include?("ejecucion")
 
 puts "[START] transform-budgets/run.rb with file=#{input_file} output=#{output_file} year=#{year}"
@@ -50,7 +50,6 @@ end
 
 def indexes
   @indexes ||= [
-    GobiertoData::GobiertoBudgets::ES_INDEX_EXECUTED,
     GobiertoData::GobiertoBudgets::ES_INDEX_FORECAST
   ]
 end
@@ -73,16 +72,20 @@ def normalize_data(data)
   end
 end
 
+def parse_amount(s)
+  raise "Nil value!" if s.blank?
+  s.tr(',', '').to_f.round(2)
+end
+
 def process_row(row)
   income = kind == GobiertoData::GobiertoBudgets::INCOME
   amounts = {
-    GobiertoData::GobiertoBudgets::ES_INDEX_EXECUTED => (income ? row[7].to_f : row[9].to_f).round(2),
-    GobiertoData::GobiertoBudgets::ES_INDEX_FORECAST => (income ? row[5].to_f : row[5].to_f + row[6].to_f).round(2)
+    GobiertoData::GobiertoBudgets::ES_INDEX_FORECAST => parse_amount(income ? row[3] : row[4])
   }
   codes = {
-    GobiertoData::GobiertoBudgets::ECONOMIC_AREA_NAME => income ? row[2] : row[3],
+    GobiertoData::GobiertoBudgets::ECONOMIC_AREA_NAME => income ? row[1] : row[2],
     GobiertoData::GobiertoBudgets::FUNCTIONAL_AREA_NAME => income ? nil : row[2],
-    GobiertoData::GobiertoBudgets::CUSTOM_AREA_NAME => income ? [row[1], row[2]].join("-") : [row[1], row[2], row[3]].join("-")
+    GobiertoData::GobiertoBudgets::CUSTOM_AREA_NAME => income ? [row[0], row[1]].join("-") : [row[0], row[1], row[2]].join("-")
   }
 
   return if codes[GobiertoData::GobiertoBudgets::ECONOMIC_AREA_NAME].nil?
@@ -157,7 +160,6 @@ end
 normalize_data(data)
 
 output_files = {
-  GobiertoData::GobiertoBudgets::ES_INDEX_EXECUTED => output_file.gsub(/_transformed\.json\z/, "_ejecucion_transformed.json"),
   GobiertoData::GobiertoBudgets::ES_INDEX_FORECAST => output_file
 }
 
