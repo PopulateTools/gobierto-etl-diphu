@@ -12,6 +12,12 @@ YEARS="2020 2019 2018 2017"
 rm -rf $WORKING_DIR
 mkdir -p $WORKING_DIR/presupuestos
 
+# Create organization id
+echo $DIPHU_INE_CODE > $WORKING_DIR/organization.id.txt
+
+# Clear previous budgets
+cd $GOBIERTO_ETL_UTILS; ruby operations/gobierto_budgets/clear-budgets/run.rb $WORKING_DIR/organization.id.txt
+
 # Copy data to WORKING_DIR
 cp -R $DATA_DIR/* $WORKING_DIR/
 
@@ -34,7 +40,6 @@ for file in $WORKING_DIR/presupuestos/*_transformed.json; do
 done
 
 # Load > Calculate totals
-echo $DIPHU_INE_CODE > $WORKING_DIR/organization.id.txt
 cd $GOBIERTO_ETL_UTILS; ruby operations/gobierto_budgets/update_total_budget/run.rb "$YEARS" $WORKING_DIR/organization.id.txt
 
 # Load > Calculate bubbles
