@@ -14,7 +14,7 @@ rm -rf $WORKING_DIR
 mkdir -p $WORKING_DIR/facturas
 
 # Copy data to WORKING_DIR
-cp -R $DATA_DIR/* $WORKING_DIR/facturas
+cp -R $DATA_DIR/* $WORKING_DIR/
 
 # Transform > Transform planned budgets data files
 for file in $WORKING_DIR/facturas/*; do

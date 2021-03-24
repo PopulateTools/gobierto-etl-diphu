@@ -13,7 +13,7 @@ rm -rf $WORKING_DIR
 mkdir -p $WORKING_DIR/presupuestos
 
 # Copy data to WORKING_DIR
-cp -R $DATA_DIR/* $WORKING_DIR/presupuestos
+cp -R $DATA_DIR/* $WORKING_DIR/
 
 # Extract > Extract custom categories
 for file in $WORKING_DIR/presupuestos/*; do
