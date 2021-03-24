@@ -84,7 +84,7 @@ def process_row(row)
   }
   codes = {
     GobiertoData::GobiertoBudgets::ECONOMIC_AREA_NAME => income ? row[1] : row[2],
-    GobiertoData::GobiertoBudgets::FUNCTIONAL_AREA_NAME => income ? nil : row[2],
+    GobiertoData::GobiertoBudgets::FUNCTIONAL_AREA_NAME => income ? nil : row[1],
     GobiertoData::GobiertoBudgets::CUSTOM_AREA_NAME => income ? [row[0], row[1]].join("-") : [row[0], row[1], row[2]].join("-")
   }
 
