@@ -1,6 +1,6 @@
 GIT
   remote: https://github.com/PopulateTools/gobierto_data.git
-  revision: 669153ace0b357acacb58539d405dcb18a879402
+  revision: 9798139a06e30999302a0e43fb02b06ce4e5f357
   specs:
     gobierto_data (0.1.0)
       actionpack
@@ -45,7 +45,7 @@ GEM
     aws-sdk-kms (1.43.0)
       aws-sdk-core (~> 3, >= 3.112.0)
       aws-sigv4 (~> 1.1)
-    aws-sdk-s3 (1.91.0)
+    aws-sdk-s3 (1.92.0)
       aws-sdk-core (~> 3, >= 3.112.0)
       aws-sdk-kms (~> 1)
       aws-sigv4 (~> 1.1)
