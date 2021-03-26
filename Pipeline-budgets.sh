@@ -7,7 +7,7 @@ source .env
 
 WORKING_DIR=/tmp/diphu
 DIPHU_INE_CODE=21000
-YEARS="2020 2019 2018 2017"
+YEARS="2021 2020 2019 2018 2017"
 
 rm -rf $WORKING_DIR
 mkdir -p $WORKING_DIR/presupuestos
