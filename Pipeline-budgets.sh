@@ -8,6 +8,8 @@ source .env
 WORKING_DIR=/tmp/diphu
 DIPHU_INE_CODE=21000
 YEARS="2021 2020 2019 2018 2017"
+CURRENT_YEAR_CUSTOM_BUDGETS=$DATA_DIR/presupuestos/2021-gastos.csv
+MAPPINGS_FILE=$DATA_DIR/custom_categories_mapping_2021.csv
 
 rm -rf $WORKING_DIR
 mkdir -p $WORKING_DIR/presupuestos
@@ -22,16 +24,14 @@ cd $GOBIERTO_ETL_UTILS; ruby operations/gobierto_budgets/clear-budgets/run.rb $W
 cp -R $DATA_DIR/* $WORKING_DIR/
 
 # Extract > Extract custom categories
-for file in $WORKING_DIR/presupuestos/*; do
-  cd $DIPHU_ETL; ruby $DIPHU_ETL/operations/gobierto_budgets/extract-custom-categories/run.rb $file $WORKING_DIR/custom_categories.json
-done
+cd $DIPHU_ETL; ruby $DIPHU_ETL/operations/gobierto_budgets/extract-custom-categories/run.rb $CURRENT_YEAR_CUSTOM_BUDGETS $MAPPINGS_FILE $WORKING_DIR/custom_categories.json
 
 # Load > Import custom categories
 cd $GOBIERTO_DIR; bin/rails runner $DIPHU_ETL/operations/gobierto_budgets/import-custom-categories/run.rb $WORKING_DIR/custom_categories.json $GOBIERTO_DOMAIN
 
 # Transform > Transform budgets data files
 for file in $WORKING_DIR/presupuestos/*; do
-  cd $DIPHU_ETL; ruby operations/gobierto_budgets/transform-budgets/run.rb $file $file"_transformed.json"
+  cd $DIPHU_ETL; ruby operations/gobierto_budgets/transform-budgets/run.rb $file $file"_transformed.json" $MAPPINGS_FILE
 done
 
 # Load > Import transformed data
