@@ -120,6 +120,7 @@ PLATFORMS
 
 DEPENDENCIES
   byebug
+  faraday
   gobierto_data!
   rb-readline
   roo (>= 2.8.2)
