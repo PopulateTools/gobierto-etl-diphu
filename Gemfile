@@ -9,4 +9,3 @@ gem "byebug"
 gem "rb-readline"
 gem "roo", ">= 2.8.2"
 gem "roo-xls", ">= 1.2.0"
-gem 'faraday'
