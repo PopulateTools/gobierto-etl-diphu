@@ -13,30 +13,38 @@ require "csv"
 # Arguments:
 #
 #  - 0: Absolute path to a file containing a CSV or a Excel file
-#  - 1: JSON output path
+#  - 1: Custom categories mapping file
+#  - 2: JSON output path
 #
 # Samples:
 #
-#   /path/to/project/operations/gobierto_budgets/extract-custom-categories/run.rb input.csv output.json
+#   /path/to/project/operations/gobierto_budgets/extract-custom-categories/run.rb input.csv output.json custom_categories_mapping_2021.csv
 #
 
-if ARGV.length != 2
+if ARGV.length != 3
   raise "At least one argument is required"
 end
 
 input_file = ARGV[0]
-output_file = ARGV[1]
-kind = ARGV[0].include?("ingresos") ? GobiertoData::GobiertoBudgets::INCOME : GobiertoData::GobiertoBudgets::EXPENSE
-execution = input_file.include?("ejecucion")
+csv_mappings = CSV.read(ARGV[1], headers: true)
+output_file = ARGV[2]
+kind = GobiertoData::GobiertoBudgets::EXPENSE
 
-puts "[START] extract-custom-categories/run.rb with file=#{input_file}"
+puts "[START] extract-custom-categories/run.rb with file=#{input_file} and mapping_file=#{ARGV[1]}"
 
-def process_row(row, kind, execution, output)
-  income = kind == GobiertoData::GobiertoBudgets::INCOME
-  name = income ? row[3] : row[4]
-  custom_code = income ? [row[1], row[2]].join("-") : [row[1], row[2], row[3]].join("-")
+def process_row(row, kind, output)
+  name = row[3]
+  custom_code = [row[0], row[1], row[2]].join("-")
 
   output.push({name: name, code: custom_code, kind: kind})
+  output
+end
+
+def process_mapping_row(row, kind, output)
+  name = row[1]
+  custom_code = row[2].to_i.to_s #remove 0s
+
+  output.push({name: name, code: custom_code, kind: kind}) unless output.find{ |r| r[:code] == custom_code }
   output
 end
 
@@ -55,9 +63,6 @@ else
 end
 
 output = []
-data.each do |row|
-  output = process_row(row, kind, execution, output)
-end
 
 if File.exists?(output_file)
   existing_output = JSON.parse(File.read(output_file))
@@ -66,6 +71,17 @@ else
 end
 
 output = existing_output.concat(output)
+
+data.each do |row|
+  output = process_row(row, kind, output)
+end
+
+csv_mappings.each do |row|
+  output = process_mapping_row(row, kind, output)
+end
+# TODO: remove when all mappings are completed
+output.push({name: 'OTRAS', code: 9, kind: kind})
+
 File.write(output_file, output.to_json)
 
 puts "[END] extract-custom-categories/run.rb"

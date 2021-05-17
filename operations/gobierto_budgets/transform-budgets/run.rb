@@ -14,23 +14,26 @@ require "csv"
 #
 #  - 0: Absolute path to a file containing a CSV or a Excel file
 #  - 1: Absolute path of the output file
+#  - 2: Maping file for custom categories
 #
 # Samples:
 #
 #   /path/to/project/operations/gobierto_budgets/transform-budgets/run.rb input.csv output.json
 #
 
-if ARGV.length != 2
+if ARGV.length != 3
   raise "At least one argument is required"
 end
 
 input_file = ARGV[0]
 output_file = ARGV[1]
 @kind = ARGV[0].include?("ingresos") ? GobiertoData::GobiertoBudgets::INCOME : GobiertoData::GobiertoBudgets::EXPENSE
-year = ARGV[0].match(/(\d{4})\d+/)[1].to_i
-execution = input_file.include?("ejecucion")
+@year = ARGV[0].match(/(\d{4})/)[1].to_i
+@csv_mappings = Hash[CSV.read(ARGV[2], headers: true).map do |row|
+  [row[0].to_i.to_s, row[2].to_i.to_s]
+end]
 
-puts "[START] transform-budgets/run.rb with file=#{input_file} output=#{output_file} year=#{year}"
+puts "[START] transform-budgets/run.rb with file=#{input_file} output=#{output_file} year=#{@year}"
 
 def transformed_data
   @transformed_data ||= indexes.inject({}) do |indexes_result, index|
@@ -50,7 +53,6 @@ end
 
 def indexes
   @indexes ||= [
-    GobiertoData::GobiertoBudgets::ES_INDEX_EXECUTED,
     GobiertoData::GobiertoBudgets::ES_INDEX_FORECAST
   ]
 end
@@ -64,7 +66,11 @@ def areas
 end
 
 def areas_with_levels
-  @areas_with_levels ||= areas - [GobiertoData::GobiertoBudgets::CUSTOM_AREA_NAME]
+  if @year == Date.today.year
+    areas
+  else
+    areas - [GobiertoData::GobiertoBudgets::CUSTOM_AREA_NAME]
+  end
 end
 
 def normalize_data(data)
@@ -73,16 +79,20 @@ def normalize_data(data)
   end
 end
 
+def parse_amount(s)
+  raise "Nil value!" if s.blank?
+  s.tr(',', '').to_f.round(2)
+end
+
 def process_row(row)
   income = kind == GobiertoData::GobiertoBudgets::INCOME
   amounts = {
-    GobiertoData::GobiertoBudgets::ES_INDEX_EXECUTED => (income ? row[7].to_f : row[9].to_f).round(2),
-    GobiertoData::GobiertoBudgets::ES_INDEX_FORECAST => (income ? row[5].to_f : row[5].to_f + row[6].to_f).round(2)
+    GobiertoData::GobiertoBudgets::ES_INDEX_FORECAST => parse_amount(income ? row[3] : row[4])
   }
   codes = {
-    GobiertoData::GobiertoBudgets::ECONOMIC_AREA_NAME => income ? row[2] : row[3],
-    GobiertoData::GobiertoBudgets::FUNCTIONAL_AREA_NAME => income ? nil : row[2],
-    GobiertoData::GobiertoBudgets::CUSTOM_AREA_NAME => income ? [row[1], row[2]].join("-") : [row[1], row[2], row[3]].join("-")
+    GobiertoData::GobiertoBudgets::ECONOMIC_AREA_NAME => income ? row[1] : row[2],
+    GobiertoData::GobiertoBudgets::FUNCTIONAL_AREA_NAME => income ? nil : row[1],
+    GobiertoData::GobiertoBudgets::CUSTOM_AREA_NAME => income ? nil : [row[0], row[1], row[2]].join("-")
   }
 
   return if codes[GobiertoData::GobiertoBudgets::ECONOMIC_AREA_NAME].nil?
@@ -92,7 +102,13 @@ def process_row(row)
       next if (code = codes[area]).nil?
 
       if areas_with_levels.include?(area)
-        code_levels = [code[0..2], code[0..1], code[0]]
+        code_levels = if area == GobiertoData::GobiertoBudgets::CUSTOM_AREA_NAME
+                        # TODO: remove default 9 when others are mapped properly
+                        parent_code = @csv_mappings[code.split("-").first.to_i.to_s] || 9
+                        [code, parent_code]
+                      else
+                        [code[0..2], code[0..1], code[0]]
+                      end
         code_levels.each do |code_level|
           transformed_data[index][area][code_level] = transformed_data[index][area].fetch(code_level, 0) + amounts[index]
         end
@@ -111,11 +127,19 @@ def hydratate(options)
 
   data.compact.map do |code, amount|
     code = code.to_s
-    level = code.length == 6 ? 4 : code.length
+    level = nil
+    parent_code = nil
     if area_name == GobiertoData::GobiertoBudgets::CUSTOM_AREA_NAME
-      level = 1
-    end
-    parent_code = case level
+      level = code.include?("-") ? 2 : 1
+      parent_code = if code.include?("-")
+                      # TODO: remove default 9 when others are mapped properly
+                      @csv_mappings[code.split("-").first.to_i.to_s] || 9
+                    else
+                      nil
+                    end
+    else
+      level = code.length == 6 ? 4 : code.length
+      parent_code = case level
                     when 1
                       nil
                     when 4
@@ -123,6 +147,7 @@ def hydratate(options)
                     else
                       code[0..-2]
                     end
+    end
 
     base_data.merge(amount: amount.round(2), code: code, level: level, kind: kind,
                     amount_per_inhabitant: base_data[:population] ? (amount / base_data[:population]).round(2) : nil,
@@ -135,7 +160,7 @@ base_data = {
   ine_code: nil,
   province_id: nil,
   autonomy_id: nil,
-  year: year,
+  year: @year,
   population: nil
 }
 
@@ -157,12 +182,11 @@ end
 normalize_data(data)
 
 output_files = {
-  GobiertoData::GobiertoBudgets::ES_INDEX_EXECUTED => output_file.gsub(/_transformed\.json\z/, "_ejecucion_transformed.json"),
   GobiertoData::GobiertoBudgets::ES_INDEX_FORECAST => output_file
 }
 
 output_files.each do |index, file_name|
-  output_data = areas.inject([]) do |aggregated_data, area|
+  output_data = areas_with_levels.inject([]) do |aggregated_data, area|
     aggregated_data + hydratate(data: transformed_data[index][area],
                                 area_name: area,
                                 base_data: base_data,
