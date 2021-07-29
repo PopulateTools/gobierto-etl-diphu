@@ -14,6 +14,9 @@ pipeline {
         // GOBIERTO_DATA_DEST_URL = ""
         // ETL = "/var/www/gobierto-etl-diphu/current/"
     }
+    options {
+        retry(3)
+    }
     stages {
         stage('Import contratos') {
             steps {
