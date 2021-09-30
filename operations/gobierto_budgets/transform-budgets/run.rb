@@ -27,7 +27,7 @@ end
 
 input_file = ARGV[0]
 output_file = ARGV[1]
-@kind = ARGV[0].include?("ingresos") ? GobiertoData::GobiertoBudgets::INCOME : GobiertoData::GobiertoBudgets::EXPENSE
+@kind = ARGV[0].include?('ingresos') ? GobiertoBudgetsData::GobiertoBudgets::INCOME : GobiertoBudgetsData::GobiertoBudgets::EXPENSE
 @year = ARGV[0].match(/(\d{4})/)[1].to_i
 @csv_mappings = Hash[CSV.read(ARGV[2], headers: true).map do |row|
   [row[0].to_i.to_s, row[2].to_i.to_s]
@@ -53,15 +53,15 @@ end
 
 def indexes
   @indexes ||= [
-    GobiertoData::GobiertoBudgets::ES_INDEX_FORECAST
+    GobiertoBudgetsData::GobiertoBudgets::ES_INDEX_FORECAST
   ]
 end
 
 def areas
   @areas ||= [
-    GobiertoData::GobiertoBudgets::ECONOMIC_AREA_NAME,
-    GobiertoData::GobiertoBudgets::FUNCTIONAL_AREA_NAME,
-    GobiertoData::GobiertoBudgets::CUSTOM_AREA_NAME
+    GobiertoBudgetsData::GobiertoBudgets::ECONOMIC_AREA_NAME,
+    GobiertoBudgetsData::GobiertoBudgets::FUNCTIONAL_AREA_NAME,
+    GobiertoBudgetsData::GobiertoBudgets::CUSTOM_AREA_NAME
   ]
 end
 
@@ -69,7 +69,7 @@ def areas_with_levels
   if @year == Date.today.year
     areas
   else
-    areas - [GobiertoData::GobiertoBudgets::CUSTOM_AREA_NAME]
+    areas - [GobiertoBudgetsData::GobiertoBudgets::CUSTOM_AREA_NAME]
   end
 end
 
@@ -85,24 +85,24 @@ def parse_amount(s)
 end
 
 def process_row(row)
-  income = kind == GobiertoData::GobiertoBudgets::INCOME
+  income = kind == GobiertoBudgetsData::GobiertoBudgets::INCOME
   amounts = {
-    GobiertoData::GobiertoBudgets::ES_INDEX_FORECAST => parse_amount(income ? row[3] : row[4])
+    GobiertoBudgetsData::GobiertoBudgets::ES_INDEX_FORECAST => parse_amount(income ? row[3] : row[4])
   }
   codes = {
-    GobiertoData::GobiertoBudgets::ECONOMIC_AREA_NAME => income ? row[1] : row[2],
-    GobiertoData::GobiertoBudgets::FUNCTIONAL_AREA_NAME => income ? nil : row[1],
-    GobiertoData::GobiertoBudgets::CUSTOM_AREA_NAME => income ? nil : [row[0], row[1], row[2]].join("-")
+    GobiertoBudgetsData::GobiertoBudgets::ECONOMIC_AREA_NAME => income ? row[1] : row[2],
+    GobiertoBudgetsData::GobiertoBudgets::FUNCTIONAL_AREA_NAME => income ? nil : row[1],
+    GobiertoBudgetsData::GobiertoBudgets::CUSTOM_AREA_NAME => income ? nil : [row[0], row[1], row[2]].join('-')
   }
 
-  return if codes[GobiertoData::GobiertoBudgets::ECONOMIC_AREA_NAME].nil?
+  return if codes[GobiertoBudgetsData::GobiertoBudgets::ECONOMIC_AREA_NAME].nil?
 
   indexes.each do |index|
     areas.each do |area|
       next if (code = codes[area]).nil?
 
       if areas_with_levels.include?(area)
-        code_levels = if area == GobiertoData::GobiertoBudgets::CUSTOM_AREA_NAME
+        code_levels = if area == GobiertoBudgetsData::GobiertoBudgets::CUSTOM_AREA_NAME
                         # TODO: remove default 9 when others are mapped properly
                         parent_code = @csv_mappings[code.split("-").first.to_i.to_s] || 9
                         [code, parent_code]
@@ -129,7 +129,7 @@ def hydratate(options)
     code = code.to_s
     level = nil
     parent_code = nil
-    if area_name == GobiertoData::GobiertoBudgets::CUSTOM_AREA_NAME
+    if area_name == GobiertoBudgetsData::GobiertoBudgets::CUSTOM_AREA_NAME
       level = code.include?("-") ? 2 : 1
       parent_code = if code.include?("-")
                       # TODO: remove default 9 when others are mapped properly
@@ -182,7 +182,7 @@ end
 normalize_data(data)
 
 output_files = {
-  GobiertoData::GobiertoBudgets::ES_INDEX_FORECAST => output_file
+  GobiertoBudgetsData::GobiertoBudgets::ES_INDEX_FORECAST => output_file
 }
 
 output_files.each do |index, file_name|
