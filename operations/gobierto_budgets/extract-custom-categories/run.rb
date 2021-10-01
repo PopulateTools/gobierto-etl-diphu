@@ -28,7 +28,7 @@ end
 input_file = ARGV[0]
 csv_mappings = CSV.read(ARGV[1], headers: true)
 output_file = ARGV[2]
-kind = GobiertoData::GobiertoBudgets::EXPENSE
+kind = GobiertoBudgetsData::GobiertoBudgets::EXPENSE
 
 puts "[START] extract-custom-categories/run.rb with file=#{input_file} and mapping_file=#{ARGV[1]}"
 

@@ -26,14 +26,15 @@ end
 
 input_file = ARGV[0]
 INE_CODE = '21000'
-kind = ARGV[0].include?("ingresos") ? GobiertoData::GobiertoBudgets::INCOME : GobiertoData::GobiertoBudgets::EXPENSE
+kind = ARGV[0].include?('ingresos') ? GobiertoBudgetsData::GobiertoBudgets::INCOME : GobiertoBudgetsData::GobiertoBudgets::EXPENSE
 SITE = Site.find_by! domain: ARGV[1]
 
 puts "[START] import-custom-categories/run.rb with file=#{input_file} site=#{SITE.domain}"
 
 def create_or_update_category!(name, code, kind)
   name_translations = { "es" => name }
-  category_attrs = { site: SITE, area_name: GobiertoData::GobiertoBudgets::CUSTOM_AREA_NAME, kind: kind, code: code }
+  category_attrs = { site: SITE, area_name: GobiertoBudgetsData::GobiertoBudgets::CUSTOM_AREA_NAME, kind: kind,
+                     code: code }
 
   if (category = GobiertoBudgets::Category.where(category_attrs).first)
     category.update_attributes!(custom_name_translations: name_translations)

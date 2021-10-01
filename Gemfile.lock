@@ -1,8 +1,8 @@
 GIT
-  remote: https://github.com/PopulateTools/gobierto_data.git
-  revision: 9798139a06e30999302a0e43fb02b06ce4e5f357
+  remote: https://github.com/PopulateTools/gobierto_budgets_data.git
+  revision: 7db1fa4d63f08ca30d334255469144bdbc246673
   specs:
-    gobierto_data (0.1.0)
+    gobierto_budgets_data (0.1.0)
       actionpack
       activesupport
       aws-sdk-s3
@@ -120,7 +120,7 @@ PLATFORMS
 
 DEPENDENCIES
   byebug
-  gobierto_data!
+  gobierto_budgets_data!
   rb-readline
   roo (>= 2.8.2)
   roo-xls (>= 1.2.0)
