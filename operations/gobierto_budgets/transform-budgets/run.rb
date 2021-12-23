@@ -36,11 +36,11 @@ end]
 puts "[START] transform-budgets/run.rb with file=#{input_file} output=#{output_file} year=#{@year}"
 
 def transformed_data
-  @transformed_data ||= indexes.inject({}) do |indexes_result, index|
-    indexes_result.update(
-      index => areas.inject({}) do |areas_result, area|
-        areas_result.update(
-          area => {}
+  @transformed_data ||= areas.inject({}) do |areas_result, area|
+    areas_result.update(
+      area => indexes.inject({}) do |indexes_result, index|
+        indexes_result.update(
+          index => {}
         )
       end
     )
@@ -53,7 +53,9 @@ end
 
 def indexes
   @indexes ||= [
-    GobiertoBudgetsData::GobiertoBudgets::ES_INDEX_FORECAST
+    GobiertoBudgetsData::GobiertoBudgets::ES_INDEX_FORECAST,
+    GobiertoBudgetsData::GobiertoBudgets::ES_INDEX_FORECAST_UPDATED,
+    GobiertoBudgetsData::GobiertoBudgets::ES_INDEX_EXECUTED
   ]
 end
 
@@ -80,14 +82,16 @@ def normalize_data(data)
 end
 
 def parse_amount(s)
-  raise "Nil value!" if s.blank?
+  return 0 if s.blank?
   s.tr(',', '').to_f.round(2)
 end
 
 def process_row(row)
   income = kind == GobiertoBudgetsData::GobiertoBudgets::INCOME
   amounts = {
-    GobiertoBudgetsData::GobiertoBudgets::ES_INDEX_FORECAST => parse_amount(income ? row[3] : row[4])
+    GobiertoBudgetsData::GobiertoBudgets::ES_INDEX_FORECAST          => parse_amount(income ? row[3] : row[4]),
+    GobiertoBudgetsData::GobiertoBudgets::ES_INDEX_FORECAST_UPDATED  => parse_amount(income ? row[4] : row[7]),
+    GobiertoBudgetsData::GobiertoBudgets::ES_INDEX_EXECUTED          => parse_amount(income ? row[5] : row[8]),
   }
   codes = {
     GobiertoBudgetsData::GobiertoBudgets::ECONOMIC_AREA_NAME => income ? row[1] : row[2],
@@ -97,10 +101,9 @@ def process_row(row)
 
   return if codes[GobiertoBudgetsData::GobiertoBudgets::ECONOMIC_AREA_NAME].nil?
 
-  indexes.each do |index|
-    areas.each do |area|
-      next if (code = codes[area]).nil?
-
+  areas.each do |area|
+    next if (code = codes[area]).nil?
+    indexes.each do |index|
       if areas_with_levels.include?(area)
         code_levels = if area == GobiertoBudgetsData::GobiertoBudgets::CUSTOM_AREA_NAME
                         # TODO: remove default 9 when others are mapped properly
@@ -110,10 +113,10 @@ def process_row(row)
                         [code[0..2], code[0..1], code[0]]
                       end
         code_levels.each do |code_level|
-          transformed_data[index][area][code_level] = transformed_data[index][area].fetch(code_level, 0) + amounts[index]
+          transformed_data[area][index][code_level] = transformed_data[area][index].fetch(code_level, 0) + amounts[index]
         end
       else
-        transformed_data[index][area][code] = amounts[index]
+        transformed_data[area][index][code] = amounts[index]
       end
     end
   end
@@ -125,8 +128,8 @@ def hydratate(options)
   base_data = options.fetch(:base_data)
   kind      = options.fetch(:kind)
 
-  data.compact.map do |code, amount|
-    code = code.to_s
+  codes = data[area_name].values.flatten.map(&:keys).flatten.map(&:to_s).uniq
+  codes.map do |code|
     level = nil
     parent_code = nil
     if area_name == GobiertoBudgetsData::GobiertoBudgets::CUSTOM_AREA_NAME
@@ -149,8 +152,14 @@ def hydratate(options)
                     end
     end
 
-    base_data.merge(amount: amount.round(2), code: code, level: level, kind: kind,
+    amount = data[area_name][GobiertoBudgetsData::GobiertoBudgets::ES_INDEX_FORECAST][code].try(:round,2)
+    amount_updated = data[area_name][GobiertoBudgetsData::GobiertoBudgets::ES_INDEX_FORECAST_UPDATED][code].try(:round,2)
+    amount_executed = data[area_name][GobiertoBudgetsData::GobiertoBudgets::ES_INDEX_EXECUTED][code].try(:round,2)
+
+    base_data.merge(amount: amount, code: code, level: level, kind: kind,
                     amount_per_inhabitant: base_data[:population] ? (amount / base_data[:population]).round(2) : nil,
+                    amount_updated: amount_updated,
+                    amount_executed: amount_executed,
                     parent_code: parent_code, type: area_name)
   end
 end
@@ -181,18 +190,9 @@ end
 
 normalize_data(data)
 
-output_files = {
-  GobiertoBudgetsData::GobiertoBudgets::ES_INDEX_FORECAST => output_file
-}
-
-output_files.each do |index, file_name|
-  output_data = areas_with_levels.inject([]) do |aggregated_data, area|
-    aggregated_data + hydratate(data: transformed_data[index][area],
-                                area_name: area,
-                                base_data: base_data,
-                                kind: kind)
-  end
-  File.write(file_name, output_data.to_json)
+output_data = areas_with_levels.inject([]) do |aggregated_data, area|
+  aggregated_data + hydratate(data: transformed_data, area_name: area, base_data: base_data, kind: kind)
 end
+File.write(output_file, output_data.to_json)
 
 puts "[END] transform-budgets/run.rb output=#{output_file}"
