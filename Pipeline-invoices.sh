@@ -32,4 +32,4 @@ echo $DIPHU_INE_CODE > $WORKING_DIR/organization.id.txt
 cd $GOBIERTO_DIR; bin/rails runner $GOBIERTO_ETL_UTILS/operations/gobierto/publish-activity/run.rb providers_updated $WORKING_DIR/organization.id.txt
 
 # Clear cache
-cd $GOBIERTO_DIR; bin/rails runner $GOBIERTO_ETL_UTILS/operations/gobierto/clear-cache/run.rb
+cd $GOBIERTO_DIR; bin/rails runner $GOBIERTO_ETL_UTILS/operations/gobierto/clear-cache/run.rb --site-organization-id "$DIPHU_INE_CODE" --namespace "GobiertoBudgets"
